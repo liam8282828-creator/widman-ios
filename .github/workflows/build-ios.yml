@@ -12,11 +12,10 @@ jobs:
       - name: 1. Descargar Código Fuente
         uses: actions/checkout@v4
 
-      - name: 2. Configurar Node.js
+      - name: 2. Configurar Node.js (Versión Actualizada)
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 24 # Cambiado a Node 24 para evitar advertencias de expiración
 
       - name: 3. Instalar Dependencias del Proyecto
         run: npm install --legacy-peer-deps
