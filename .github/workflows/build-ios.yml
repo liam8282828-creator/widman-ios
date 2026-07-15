@@ -6,7 +6,7 @@ on:
 jobs:
   build-ios:
     name: Compilando en Servidor macOS de GitHub
-    runs-on: macos-14
+    runs-on: macos-15 # Actualizado a macOS 15 que incluye Xcode 16+ oficial de forma nativa
     
     steps:
       - name: 1. Descargar Código Fuente
@@ -88,9 +88,6 @@ jobs:
           
           echo "import { registerRootComponent } from 'expo'; import App from './App'; registerRootComponent(App);" > index.js
           npm install --legacy-peer-deps
-          
-          echo "[SISTEMA]: Forzando la reparación de versiones para Apple nativo..."
-          # Se agregaron los guiones -- requeridos por Expo para pasar la bandera de herencia de forma correcta
           npx expo install --fix -- --legacy-peer-deps
 
       - name: 5. Instalar EAS CLI de Expo
@@ -107,7 +104,7 @@ jobs:
           cd ios && pod install
           
           echo "[SISTEMA]: Compilando ejecutable de iPhone..."
-          xcodebuild -workspace *.xcworkspace -scheme "WIDMANIOS" -configuration Debug -sdk iphonesimulator -arch x86_64 CODE_SIGNING_ALLOWED=NO -quiet
+          xcodebuild -workspace *.xcworkspace -scheme "WIDMANIOS" -configuration Debug -sdk iphonesimulator -arch arm64 CODE_SIGNING_ALLOWED=NO -quiet
 
       - name: 7. Subir archivo final a GitHub
         uses: actions/upload-artifact@v4
