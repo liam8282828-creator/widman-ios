@@ -25,11 +25,10 @@ jobs:
         with:
           node-version: 20
 
-      - name: 4. Inyectar package.json Completo e Instalar Dependencias
+      - name: 4. Inyectar package.json Base e Instalar Dependencias
         run: |
           cd "${{ env.PROYECTO_ENCONTRADO }}"
           
-          # Inyectamos TODAS las librerías de tu lista original pero con versiones limpias y fijas de Expo 54
           cat << 'EOF' > package.json
           {
             "name": "widman-ios",
@@ -89,6 +88,10 @@ jobs:
           
           echo "import { registerRootComponent } from 'expo'; import App from './App'; registerRootComponent(App);" > index.js
           npm install --legacy-peer-deps
+          
+          echo "[SISTEMA]: Forzando la reparación de versiones para Apple nativo..."
+          # Este comando ajustará automáticamente las versiones en conflicto para que CocoaPods no falle
+          npx expo install --fix --legacy-peer-deps
 
       - name: 5. Instalar EAS CLI de Expo
         run: npm install -g eas-cli
