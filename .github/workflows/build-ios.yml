@@ -16,20 +16,25 @@ jobs:
         run: |
           echo "[SISTEMA]: Descomprimiendo archivos de origen..."
           unzip -q widman-ios-source.zip -d ./unzipped_project || true
-          
-          # Encontrar automáticamente la subcarpeta que tiene el package.json real dentro del ZIP
           REAL_PATH=$(dirname $(find . -name "package.json" | head -n 1))
           echo "PROYECTO_ENCONTRADO=$REAL_PATH" >> $GITHUB_ENV
-          echo "[SISTEMA]: Proyecto localizado con éxito en: $REAL_PATH"
+          echo "[SISTEMA]: Proyecto localizado en: $REAL_PATH"
 
       - name: 3. Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
 
-      - name: 4. Instalar Dependencias del Proyecto
+      - name: 4. Parchear Catalogs de Replit e Instalar Dependencias
         run: |
           cd "${{ env.PROYECTO_ENCONTRADO }}"
+          
+          echo "[SISTEMA]: Limpiando el archivo package.json corrupto de Replit..."
+          # Reemplazar los "catalog:" rotos por versiones válidas usando comandos de texto nativos
+          sed -i '' 's/"catalog:"/"^5.0.0"/g' package.json
+          sed -i '' 's/"@workspace\/api-client-react": "workspace:\*"//g' package.json
+          
+          echo "[SISTEMA]: Instalando paquetes de WIDMAN IOS..."
           npm install --legacy-peer-deps
 
       - name: 5. Instalar EAS CLI de Expo
