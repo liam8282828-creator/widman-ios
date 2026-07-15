@@ -28,9 +28,6 @@ jobs:
       - name: 4. Inyectar package.json Limpio e Instalar Dependencias
         run: |
           cd "${{ env.PROYECTO_ENCONTRADO }}"
-          
-          echo "[SISTEMA]: Sobrescribiendo package.json con una estructura limpia y sin errores..."
-          # Escribir directamente el archivo JSON perfecto sin depender de las comas rotas de Replit
           cat << 'EOF' > package.json
           {
             "name": "widman-ios",
@@ -89,46 +86,22 @@ jobs:
             }
           }
           EOF
-          
-          echo "[SISTEMA]: Instalando paquetes de WIDMAN IOS de forma segura..."
           npm install --legacy-peer-deps
 
       - name: 5. Instalar EAS CLI de Expo
         run: npm install -g eas-cli
 
-      - name: 6. Instalar Certificados Oficiales de Apple
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISION_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: "temporal_password_123"
-        run: |
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
-
-      - name: 7. Compilar archivo .ipa
+      - name: 6. Compilar archivo de simulación iOS
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           cd "${{ env.PROYECTO_ENCONTRADO }}"
-          npx eas-cli build --platform ios --profile preview --local --non-interactive
+          # Compilar usando el emulador nativo de Xcode para saltarse las firmas de Apple temporales
+          npx expo prebuild --platform ios
+          cd ios && xcodebuild -workspace *.xcworkspace -scheme * -configuration Debug -sdk iphonesimulator -arch x86_64 CODE_SIGNING_ALLOWED=NO
 
-      - name: 8. Subir archivo final .ipa a GitHub
+      - name: 7. Subir archivo final a GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: WIDMAN-IOS-Instalable
-          path: ./**/*.ipa
+          name: WIDMAN-IOS-Simulador
+          path: ./**/*.app
