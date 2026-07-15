@@ -23,9 +23,9 @@ jobs:
       - name: 3. Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Cambiado a Node 20 para máxima estabilidad con CocoaPods
+          node-version: 20
 
-      - name: 4. Inyectar package.json Oficial e Instalar Dependencias
+      - name: 4. Inyectar package.json Completo e Instalar Dependencias
         run: |
           cd "${{ env.PROYECTO_ENCONTRADO }}"
           cat << 'EOF' > package.json
@@ -45,7 +45,10 @@ jobs:
               "expo-document-picker": "~13.0.2",
               "expo-file-system": "~18.0.7",
               "expo-sharing": "~14.0.8",
-              "react-native-webview": "13.15.0"
+              "react-native-webview": "13.15.0",
+              "expo-router": "~6.0.17",
+              "react-native-safe-area-context": "~5.6.0",
+              "react-native-screens": "~4.16.0"
             },
             "devDependencies": {
               "@babel/core": "^7.25.2"
@@ -53,9 +56,7 @@ jobs:
           }
           EOF
           
-          # Crear un index.js básico para que Expo arranque sin quejarse de configuraciones web rotas
           echo "import { registerRootComponent } from 'expo'; import App from './App'; registerRootComponent(App);" > index.js
-          
           npm install --legacy-peer-deps
 
       - name: 5. Instalar EAS CLI de Expo
