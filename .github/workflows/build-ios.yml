@@ -17,13 +17,28 @@ jobs:
         with:
           node-version: 24
 
-      - name: 3. Instalar Dependencias del Proyecto
-        run: npm install --legacy-peer-deps
+      - name: 3. Ubicar carpetas e Instalar Dependencias
+        run: |
+          echo "=== DIAGNÓSTICO DE CARPETAS DE REPLIT ==="
+          pwd
+          ls -R
+          echo "=========================================="
+          
+          # Encontrar la carpeta real automáticamente usando find
+          REAL_PATH=$(find . -name "package.json" -exec dirname {} \;)
+          echo "Carpeta real encontrada en: $REAL_PATH"
+          
+          # Entrar a esa carpeta e instalar de forma directa
+          cd "$REAL_PATH"
+          npm install --legacy-peer-deps
+          
+          # Guardar la ruta para el paso de compilación
+          echo "FINAL_PROJECT_PATH=$REAL_PATH" >> $GITHUB_ENV
 
       - name: 4. Instalar EAS CLI de Expo
         run: npm install -g eas-cli
 
-      - name: 5. Instalar Certificados Oficiales de Apple en la Mac Virtual
+      - name: 5. Instalar Certificados Oficiales de Apple
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
@@ -47,14 +62,15 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
 
-      - name: 6. Compilar archivo .ipa en la Nube
+      - name: 6. Compilar archivo .ipa
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
+          cd "${{ env.FINAL_PROJECT_PATH }}"
           npx eas-cli build --platform ios --profile preview --local --non-interactive
 
       - name: 7. Subir archivo final .ipa a GitHub
         uses: actions/upload-artifact@v4
         with:
           name: WIDMAN-IOS-Instalable
-          path: ./*.ipa
+          path: ./**/*.ipa
