@@ -1,34 +1,24 @@
 name: Compilar WIDMAN IOS (.ipa)
 
 on:
-  workflow_dispatch: # Te permite activar la compilación manualmente con un botón
+  workflow_dispatch:
 
 jobs:
   build-ios:
     name: Compilando en Servidor macOS de GitHub
-    runs-on: macos-14 # Fuerza el uso de los servidores Mac oficiales de GitHub
+    runs-on: macos-14
     
     steps:
       - name: 1. Descargar Código Fuente
         uses: actions/checkout@v4
 
-      - name: 2. Configurar Node.js (Versión Actualizada)
+      - name: 2. Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
 
-      - name: 3. Detectar carpeta del proyecto e Instalar Dependencias
-        run: |
-          # Buscar de forma automática dónde está el archivo package.json real
-          TARGET_DIR=$(dirname $(find . -name "package-json" -o -name "package.json" | head -n 1))
-          echo "[SISTEMA]: Proyecto encontrado en la ruta: $TARGET_DIR"
-          cd "$TARGET_DIR"
-          
-          # Guardar la ruta exacta en una variable global para los siguientes pasos
-          echo "PROJECT_PATH=$TARGET_DIR" >> $GITHUB_ENV
-          
-          # Instalar paquetes
-          npm install --legacy-peer-deps
+      - name: 3. Instalar Dependencias del Proyecto
+        run: npm install --legacy-peer-deps
 
       - name: 4. Instalar EAS CLI de Expo
         run: npm install -g eas-cli
@@ -61,12 +51,10 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          # Entrar a la ruta guardada automáticamente y lanzar el empaquetador
-          cd "${{ env.PROJECT_PATH }}"
           npx eas-cli build --platform ios --profile preview --local --non-interactive
 
       - name: 7. Subir archivo final .ipa a GitHub
         uses: actions/upload-artifact@v4
         with:
           name: WIDMAN-IOS-Instalable
-          path: ./**/*.ipa # Busca recursivamente el archivo IPA en cualquier carpeta
+          path: ./*.ipa
