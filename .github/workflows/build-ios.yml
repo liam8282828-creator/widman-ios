@@ -90,8 +90,8 @@ jobs:
           npm install --legacy-peer-deps
           
           echo "[SISTEMA]: Forzando la reparación de versiones para Apple nativo..."
-          # Este comando ajustará automáticamente las versiones en conflicto para que CocoaPods no falle
-          npx expo install --fix --legacy-peer-deps
+          # Se agregaron los guiones -- requeridos por Expo para pasar la bandera de herencia de forma correcta
+          npx expo install --fix -- --legacy-peer-deps
 
       - name: 5. Instalar EAS CLI de Expo
         run: npm install -g eas-cli
