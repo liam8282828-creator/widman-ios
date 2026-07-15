@@ -6,7 +6,7 @@ on:
 jobs:
   build-ios:
     name: Compilando en Servidor macOS de GitHub
-    runs-on: macos-15 # Actualizado a macOS 15 que incluye Xcode 16+ oficial de forma nativa
+    runs-on: macos-15
     
     steps:
       - name: 1. Descargar Código Fuente
@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: 4. Inyectar package.json Base e Instalar Dependencias
+      - name: 4. Inyectar package.json e Instalar Dependencias
         run: |
           cd "${{ env.PROYECTO_ENCONTRADO }}"
           
@@ -35,9 +35,6 @@ jobs:
             "version": "1.0.0",
             "private": true,
             "main": "index.js",
-            "scripts": {
-              "start": "expo start"
-            },
             "dependencies": {
               "@expo-google-fonts/inter": "^0.4.0",
               "@expo/vector-icons": "^15.0.3",
@@ -93,21 +90,32 @@ jobs:
       - name: 5. Instalar EAS CLI de Expo
         run: npm install -g eas-cli
 
-      - name: 6. Pre-compilar Estructura de iOS y Correr Xcode
+      - name: 6. Pre-compilar y Empaquetar en archivo .ipa Real
         run: |
           cd "${{ env.PROYECTO_ENCONTRADO }}"
           
           echo "[SISTEMA]: Generando archivos nativos de Apple..."
           npx expo prebuild --platform ios --no-install
           
-          echo "[SISTEMA]: Instalando CocoaPods de forma manual..."
+          echo "[SISTEMA]: Instalando CocoaPods..."
           cd ios && pod install
           
-          echo "[SISTEMA]: Compilando ejecutable de iPhone..."
-          xcodebuild -workspace *.xcworkspace -scheme "WIDMANIOS" -configuration Debug -sdk iphonesimulator -arch arm64 CODE_SIGNING_ALLOWED=NO -quiet
+          echo "[SISTEMA]: Compilando binario para teléfonos reales (iphoneos)..."
+          # Compilamos para iphoneos permitiendo saltarse la firma temporalmente
+          xcodebuild -workspace *.xcworkspace -scheme "WIDMANIOS" -configuration Release -sdk iphoneos CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO -derivedDataPath ./build -quiet
+          
+          echo "[SISTEMA]: Creando estructura oficial .ipa para ESign..."
+          # Buscamos la carpeta .app creada y la metemos dentro de la carpeta obligatoria Payload
+          mkdir -p Payload
+          cp -r ./build/Build/Products/Release-iphoneos/*.app ./Payload/
+          
+          # Comprimimos la carpeta Payload en formato zip y le cambiamos la extensión a .ipa
+          zip -r ../../../WIDMAN_IOS.ipa Payload
+          
+          echo "[SISTEMA]: ¡Estructura .ipa armada con éxito!"
 
-      - name: 7. Subir archivo final a GitHub
+      - name: 7. Exportar archivo .ipa final a GitHub
         uses: actions/upload-artifact@v4
         with:
-          name: WIDMAN-IOS-Simulador
-          path: ./**/*.app
+          name: WIDMAN-IPA-Instalable
+          path: ./WIDMAN_IOS.ipa
