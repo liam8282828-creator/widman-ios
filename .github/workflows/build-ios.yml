@@ -17,9 +17,18 @@ jobs:
         with:
           node-version: 24
 
-      - name: 3. Instalar Dependencias del Proyecto
-        working-directory: ./artifacts/widman-ios # Indica la ruta exacta donde está el package.json
-        run: npm install --legacy-peer-deps
+      - name: 3. Detectar carpeta del proyecto e Instalar Dependencias
+        run: |
+          # Buscar de forma automática dónde está el archivo package.json real
+          TARGET_DIR=$(dirname $(find . -name "package-json" -o -name "package.json" | head -n 1))
+          echo "[SISTEMA]: Proyecto encontrado en la ruta: $TARGET_DIR"
+          cd "$TARGET_DIR"
+          
+          # Guardar la ruta exacta en una variable global para los siguientes pasos
+          echo "PROJECT_PATH=$TARGET_DIR" >> $GITHUB_ENV
+          
+          # Instalar paquetes
+          npm install --legacy-peer-deps
 
       - name: 4. Instalar EAS CLI de Expo
         run: npm install -g eas-cli
@@ -49,14 +58,15 @@ jobs:
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
 
       - name: 6. Compilar archivo .ipa en la Nube
-        working-directory: ./artifacts/widman-ios # Ejecuta la compilación en la ruta del proyecto
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
+          # Entrar a la ruta guardada automáticamente y lanzar el empaquetador
+          cd "${{ env.PROJECT_PATH }}"
           npx eas-cli build --platform ios --profile preview --local --non-interactive
 
       - name: 7. Subir archivo final .ipa a GitHub
         uses: actions/upload-artifact@v4
         with:
           name: WIDMAN-IOS-Instalable
-          path: ./artifacts/widman-ios/*.ipa # Busca el archivo generado en la subcarpeta
+          path: ./**/*.ipa # Busca recursivamente el archivo IPA en cualquier carpeta
