@@ -1,0 +1,67 @@
+name: Compilar WIDMAN IOS (.ipa)
+
+on:
+  workflow_dispatch: # Te permite activar la compilación manualmente con un botón
+
+jobs:
+  build-ios:
+    name: Compilando en Servidor macOS de GitHub
+    runs-on: macos-14 # Fuerza el uso de los servidores Mac oficiales de GitHub
+    
+    steps:
+      - name: 1. Descargar Código Fuente
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 3. Instalar Dependencias del Proyecto
+        run: npm install --legacy-peer-deps
+
+      - name: 4. Instalar EAS CLI de Expo
+        run: npm install -g eas-cli
+
+      - name: 5. Instalar Certificados Oficiales de Apple en la Mac Virtual
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.APPLE_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: "temporal_password_123"
+        run: |
+          # Crear variables de rutas
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Descomprimir certificados desde los secretos de GitHub
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          # Crear y desbloquear el llavero de seguridad de macOS
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Importar el certificado .p12 a la Mac virtual
+          security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Mover el perfil de provisión a la ruta correcta de Xcode
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: 6. Compilar archivo .ipa en la Nube
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          # Comando para empaquetar la estructura de iOS usando las firmas locales inyectadas
+          npx eas-cli build --platform ios --profile preview --local --non-interactive
+
+      - name: 7. Subir archivo final .ipa a GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: WIDMAN-IOS-Instalable
+          path: ./*.ipa # Busca el archivo generado y lo guarda en tu repositorio
